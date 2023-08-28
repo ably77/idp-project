@@ -7,8 +7,12 @@ spec:
   generators:
   - list:
       elements:
-      - cluster: mgmt
-        url: https://kubernetes.default.svc
+      #- cluster: k3d-gp-mgmt
+      #  url: https://kubernetes.default.svc
+      - cluster: k3d-gp-mgmt
+        url: https://0.0.0.0:6443
+      #- cluster: k3d-gp-west
+      #  url: https://gp-west.glooplatform.com:6444
   template:
     metadata:
       name: '{{cluster}}-httpbin'

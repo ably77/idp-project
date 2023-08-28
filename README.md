@@ -1,8 +1,29 @@
 # quickstart
 
+Create k3d cluster:
+```
+# gp-mgmt
+k3d cluster create --config k3d/gp-mgmt.yaml
+
+# gp-west
+k3d cluster create --config k3d/gp-west.yaml
+
+# gp-east
+k3d cluster create --config k3d/gp-west.yaml
+
+```
+
+Note: you will need to change your `/etc/hosts` file to point at the following kubeAPI hosts:
+```
+127.0.0.1 gp-west.glooplatform.com
+127.0.0.1 gp-east.glooplatform.com
+127.0.0.1 mgmt.glooplatform.com
+```
+
 Install ArgoCD:
 ```
-./bootstrap-argocd/install-argocd.sh insecure-rootpath <cluster_context>
+cd bootstrap-argocd
+./install-argocd.sh insecure-rootpath <cluster_context>
 ```
 
 Check that ArgoCD is up and running:
@@ -21,4 +42,10 @@ argocd-application-controller-0                    1/1     Running   0          
 Deploy applications app-of-app, which deploys httpbin
 ```
 kubectl apply -f applications-aoa.yaml
+```
+
+Delete cluster:
+```
+k3d cluster list
+k3d cluster delete <cluster name>
 ```
