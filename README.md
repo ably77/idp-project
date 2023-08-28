@@ -1,34 +1,24 @@
 # quickstart
 
-Create k3d cluster:
+Create Clusters in GKE:
+- This step is a prerequisite
+- At least two clusters is ideal, named `mgmt` and `cluster1`
+
+Set cluster variables:
 ```
-# gp-mgmt
-k3d cluster create --config k3d/gp-mgmt.yaml
-
-# gp-west
-k3d cluster create --config k3d/gp-west.yaml
-
-# gp-east
-k3d cluster create --config k3d/gp-west.yaml
-
+mgmt="mgmt"
+cluster1="cluster1"
 ```
 
-Note: you will need to change your `/etc/hosts` file to point at the following kubeAPI hosts:
-```
-127.0.0.1 gp-west.glooplatform.com
-127.0.0.1 gp-east.glooplatform.com
-127.0.0.1 mgmt.glooplatform.com
-```
-
-Install ArgoCD:
+Install ArgoCD on `mgmt`
 ```
 cd bootstrap-argocd
-./install-argocd.sh insecure-rootpath <cluster_context>
+./install-argocd.sh insecure-rootpath ${mgmt}
 ```
 
 Check that ArgoCD is up and running:
 ```
-% k get pods -n argocd
+% k get pods -n argocd --context ${mgmt}
 NAME                                               READY   STATUS    RESTARTS   AGE
 argocd-redis-74f98b85f-54l4w                       1/1     Running   0          5m13s
 argocd-applicationset-controller-cff4b447c-t9z49   1/1     Running   0          5m14s
@@ -39,13 +29,73 @@ argocd-repo-server-785d677d59-s2hjv                1/1     Running   0          
 argocd-application-controller-0                    1/1     Running   0          5m13s
 ```
 
-Deploy applications app-of-app, which deploys httpbin
+Register remote argocd cluster:
 ```
-kubectl apply -f applications-aoa.yaml
+argocd cluster add ${cluster1}
 ```
 
-Delete cluster:
+The output should look similar to below:
 ```
-k3d cluster list
-k3d cluster delete <cluster name>
+% argocd cluster add cluster1
+WARNING: This will create a service account `argocd-manager` on the cluster referenced by context `cluster1` with full cluster level privileges. Do you want to continue [y/N]? y
+INFO[0002] ServiceAccount "argocd-manager" created in namespace "kube-system" 
+INFO[0003] ClusterRole "argocd-manager-role" created    
+INFO[0003] ClusterRoleBinding "argocd-manager-role-binding" created 
+INFO[0008] Created bearer token secret for ServiceAccount "argocd-manager" 
+Cluster 'https://34.73.72.254' added
+```
+
+Set the remote cluster destination server as a variable:
+```
+cluster_destination_server="https://34.73.72.254"
+```
+
+Deploy argo `ApplicationSet`
+```
+kubectl apply --context ${mgmt} -f- <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: applications
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements:
+      - cluster: cluster1
+        url: ${cluster_destination_server}
+  template:
+    metadata:
+      name: '{{cluster}}-httpbin'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/ably77/idp-project
+        targetRevision: HEAD
+        path: applications/
+      destination:
+        server: '{{url}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ApplyOutOfSyncOnly=true
+EOF
+```
+
+Verify on `cluster1` that the `httpbin` application has been deployed
+```
+kubectl get pods -n httpbin --context ${cluster1}
+```
+
+Output should look like below:
+```
+% kubectl get applicationset -n argocd --context ${mgmt}
+NAME           AGE
+applications   34s
+
+% kubectl get pods -n httpbin --context ${cluster1}
+NAME                      READY   STATUS    RESTARTS   AGE
+httpbin-9dbd644c7-f5qjd   1/1     Running   0          6s
 ```
