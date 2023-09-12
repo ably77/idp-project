@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: httpbin
+  name: httpbin-idp
   labels:
     istio.io/rev: 1-18
 ---
@@ -9,7 +9,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: httpbin
-  namespace: httpbin
+  namespace: httpbin-idp
 ---
 apiVersion: v1
 kind: Service
@@ -17,7 +17,7 @@ metadata:
   labels:
     app: httpbin
   name: httpbin
-  namespace: httpbin
+  namespace: httpbin-idp
 spec:
   ports:
   - name: http
@@ -30,7 +30,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: httpbin
-  namespace: httpbin
+  namespace: httpbin-idp
 spec:
   replicas: 1
   selector:
